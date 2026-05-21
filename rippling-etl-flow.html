@@ -3,14 +3,15 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>People Data Flow: Rippling → Snowflake → BI Tool</title>
+  <title>People Data Flow</title>
   <style>
+    :root { color-scheme: light; }
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      background: #0f1117;
-      color: #e8eaf0;
+      background: #f5f6fa;
+      color: #111827;
       min-height: 100vh;
       display: flex;
       flex-direction: column;
@@ -19,258 +20,228 @@
       padding: 40px 20px;
     }
 
-    h1 {
-      font-size: 1.5rem;
-      font-weight: 600;
-      letter-spacing: -0.01em;
-      color: #ffffff;
-      margin-bottom: 6px;
-      text-align: center;
-    }
+    h1 { font-size: 1.5rem; font-weight: 600; color: #111827; margin-bottom: 6px; text-align: center; }
+    .subtitle { font-size: 0.9rem; color: #6b7494; margin-bottom: 52px; text-align: center; }
 
-    .subtitle {
-      font-size: 0.9rem;
-      color: #7c8db5;
-      margin-bottom: 52px;
-      text-align: center;
-    }
-
-    /* ── FLOW CONTAINER ── */
     .flow {
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 0;
-      flex-wrap: nowrap;
       width: 100%;
-      max-width: 960px;
+      max-width: 1100px;
     }
 
-    /* ── NODE CARD ── */
+    .sources-col, .dest-col { display: flex; flex-direction: column; gap: 20px; }
+
+    /* ── NODE ── */
     .node {
       display: flex;
       flex-direction: column;
       align-items: center;
-      background: #1a1f2e;
-      border: 1px solid #2a3050;
+      background: #ffffff;
+      border: 1.5px solid #e2e5ef;
       border-radius: 16px;
-      padding: 28px 28px 22px;
-      width: 200px;
-      min-width: 180px;
+      padding: 22px 20px 18px;
+      width: 176px;
       cursor: pointer;
       transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
       position: relative;
     }
+    .node:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,0.09); }
+    .node.active { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent), 0 8px 24px rgba(0,0,0,0.08); }
 
-    .node:hover {
-      transform: translateY(-4px);
-      box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+    .node-icon { width: 46px; height: 46px; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-bottom: 11px; font-size: 1.4rem; flex-shrink: 0; }
+    .node-label { font-size: 0.88rem; font-weight: 600; color: #111827; margin-bottom: 3px; text-align: center; line-height: 1.3; }
+    .node-sublabel { font-size: 0.69rem; color: #6b7494; text-align: center; line-height: 1.4; }
+
+    .node-ribbon {
+      position: absolute; top: -1px; right: 12px;
+      font-size: 0.6rem; font-weight: 600; letter-spacing: 0.04em;
+      background: #8b5cf6; color: #fff;
+      padding: 3px 7px; border-radius: 0 0 6px 6px; text-transform: uppercase;
     }
 
-    .node.active {
-      border-color: var(--accent);
-      box-shadow: 0 0 0 1px var(--accent), 0 12px 40px rgba(0,0,0,0.4);
-    }
+    /* colour themes */
+    .node-rippling  { --accent: #f97316; } .node-rippling .node-icon  { background: rgba(249,115,22,0.1); }
+    .node-ashby     { --accent: #0d9488; } .node-ashby .node-icon     { background: rgba(13,148,136,0.1); }
+    .node-fivetran  { --accent: #6366f1; } .node-fivetran .node-icon  { background: rgba(99,102,241,0.1); }
+    .node-snowflake { --accent: #0ea5e9; } .node-snowflake .node-icon { background: rgba(14,165,233,0.1); }
+    .node-workforce { --accent: #10b981; } .node-workforce .node-icon { background: rgba(16,185,129,0.1); }
+    .node-empbrand  { --accent: #8b5cf6; } .node-empbrand .node-icon  { background: rgba(139,92,246,0.1); }
 
-    .node-icon {
-      width: 52px;
-      height: 52px;
-      border-radius: 12px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin-bottom: 14px;
-      font-size: 1.6rem;
-    }
+    /* ── SVG CONNECTORS ── */
+    .merge-svg-wrap, .split-svg-wrap { flex-shrink: 0; width: 88px; }
+    .merge-svg-wrap svg, .split-svg-wrap svg { display: block; width: 100%; height: 100%; overflow: visible; }
 
-    .node-label {
-      font-size: 1rem;
-      font-weight: 600;
-      color: #ffffff;
-      margin-bottom: 4px;
-    }
-
-    .node-sublabel {
-      font-size: 0.75rem;
-      color: #7c8db5;
-      text-align: center;
-      line-height: 1.4;
-    }
-
-    /* colour themes per node */
-    .node-rippling  { --accent: #ff6b4a; }
-    .node-rippling .node-icon { background: rgba(255,107,74,0.15); color: #ff6b4a; }
-
-    .node-etl  { --accent: #a78bfa; }
-    .node-etl .node-icon { background: rgba(167,139,250,0.15); color: #a78bfa; }
-
-    .node-snowflake { --accent: #38bdf8; }
-    .node-snowflake .node-icon { background: rgba(56,189,248,0.15); color: #38bdf8; }
-
-    .node-bi { --accent: #34d399; }
-    .node-bi .node-icon { background: rgba(52,211,153,0.15); color: #34d399; }
-
-    /* ── ARROW ── */
-    .arrow-wrapper {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      flex: 1;
-      min-width: 60px;
-      max-width: 100px;
-      position: relative;
-    }
-
-    .arrow-line {
-      width: 100%;
-      height: 2px;
-      background: linear-gradient(90deg, var(--from-color), var(--to-color));
-      position: relative;
-    }
-
+    /* ── ARROWS ── */
+    .arrow-wrapper { display: flex; flex-direction: column; align-items: center; flex: 0 0 72px; position: relative; }
+    .arrow-line { width: 100%; height: 2px; background: linear-gradient(90deg, var(--from-color), var(--to-color)); position: relative; }
     .arrow-line::after {
-      content: '';
-      position: absolute;
-      right: -1px;
-      top: 50%;
-      transform: translateY(-50%);
-      border-top: 6px solid transparent;
-      border-bottom: 6px solid transparent;
-      border-left: 10px solid var(--to-color);
+      content: ''; position: absolute; right: -1px; top: 50%; transform: translateY(-50%);
+      border-top: 5px solid transparent; border-bottom: 5px solid transparent; border-left: 9px solid var(--to-color);
     }
+    .arrow-label { font-size: 0.61rem; color: #aab0c8; margin-top: 7px; text-transform: uppercase; letter-spacing: 0.06em; white-space: nowrap; }
 
-    .arrow-label {
-      font-size: 0.65rem;
-      color: #4a5475;
-      margin-top: 8px;
-      text-align: center;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      white-space: nowrap;
-    }
-
-    /* ── PACKETS (data in motion) ── */
     .packet {
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      background: var(--pkt-color);
-      position: absolute;
-      top: 50%;
-      transform: translateY(-50%);
-      animation: travel var(--speed) linear infinite;
-      animation-delay: var(--delay);
-      box-shadow: 0 0 6px var(--pkt-color);
-      opacity: 0;
+      width: 8px; height: 8px; border-radius: 50%; background: var(--pkt-color);
+      position: absolute; top: 50%; transform: translateY(-50%);
+      animation: travel var(--speed) linear infinite; animation-delay: var(--delay);
+      box-shadow: 0 0 5px var(--pkt-color); opacity: 0;
     }
-
     @keyframes travel {
       0%   { left: 0%;   opacity: 0; }
       5%   { opacity: 1; }
-      95%  { opacity: 1; }
+      92%  { opacity: 1; }
       100% { left: 100%; opacity: 0; }
     }
 
     /* ── DETAIL PANEL ── */
     .detail-panel {
-      margin-top: 40px;
-      background: #1a1f2e;
-      border: 1px solid #2a3050;
-      border-radius: 16px;
-      padding: 28px 32px;
-      max-width: 680px;
-      width: 100%;
-      min-height: 130px;
-      transition: opacity 0.3s ease;
+      margin-top: 40px; background: #ffffff; border: 1.5px solid #e2e5ef;
+      border-radius: 16px; padding: 26px 30px; max-width: 740px; width: 100%;
+      min-height: 120px; transition: opacity 0.25s ease; box-shadow: 0 2px 12px rgba(0,0,0,0.05);
     }
+    .detail-panel h2 { font-size: 0.95rem; font-weight: 600; color: #111827; margin-bottom: 10px; display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
+    .detail-panel h2 .badge { font-size: 0.67rem; font-weight: 500; padding: 3px 8px; border-radius: 99px; }
+    .detail-panel p { font-size: 0.845rem; color: #4b5563; line-height: 1.68; }
+    .detail-panel ul { margin-top: 12px; padding-left: 0; list-style: none; display: flex; flex-wrap: wrap; gap: 7px; }
+    .detail-panel ul li { font-size: 0.74rem; background: #f5f6fa; border: 1px solid #e2e5ef; border-radius: 8px; padding: 4px 10px; color: #374151; }
 
-    .detail-panel h2 {
-      font-size: 1rem;
-      font-weight: 600;
-      margin-bottom: 10px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
+    /* ── OPEN LINK BUTTON ── */
+    .open-link {
+      display: inline-flex; align-items: center; gap: 6px;
+      margin-top: 16px; padding: 8px 14px;
+      border-radius: 8px; border: 1.5px solid var(--link-color, #6366f1);
+      color: var(--link-color, #6366f1); background: transparent;
+      font-size: 0.8rem; font-weight: 500; cursor: pointer;
+      text-decoration: none;
+      transition: background 0.15s ease, color 0.15s ease;
     }
+    .open-link:hover { background: var(--link-color, #6366f1); color: #fff; }
+    .open-link svg { flex-shrink: 0; }
 
-    .detail-panel h2 .badge {
-      font-size: 0.7rem;
-      font-weight: 500;
-      padding: 3px 8px;
-      border-radius: 99px;
-      background: var(--badge-bg, rgba(255,255,255,0.08));
-      color: var(--badge-text, #aab);
-    }
+    .hint { margin-top: 28px; font-size: 0.72rem; color: #c0c7d8; text-align: center; }
 
-    .detail-panel p {
-      font-size: 0.875rem;
-      color: #9aa3c0;
-      line-height: 1.65;
+    /* ── ACCESS REQUEST FORM ── */
+    .access-divider {
+      display: flex; align-items: center; gap: 10px;
+      margin: 18px 0 14px;
     }
-
-    .detail-panel ul {
-      margin-top: 10px;
-      padding-left: 0;
-      list-style: none;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
+    .access-divider::before,
+    .access-divider::after {
+      content: ''; flex: 1; height: 1px; background: #e2e5ef;
     }
-
-    .detail-panel ul li {
-      font-size: 0.78rem;
-      background: rgba(255,255,255,0.06);
-      border: 1px solid rgba(255,255,255,0.08);
-      border-radius: 8px;
-      padding: 4px 10px;
-      color: #c8d0e8;
+    .access-divider span {
+      font-size: 0.72rem; color: #9aa3c0; white-space: nowrap;
     }
-
-    .hint {
-      margin-top: 32px;
-      font-size: 0.75rem;
-      color: #3d4a6a;
-      text-align: center;
+    .access-form { display: flex; flex-direction: column; gap: 10px; }
+    .access-form .form-row { display: flex; gap: 10px; }
+    .access-form .form-row input { flex: 1; }
+    .access-form input,
+    .access-form textarea {
+      width: 100%; padding: 9px 12px;
+      border: 1.5px solid #e2e5ef; border-radius: 8px;
+      font-size: 0.82rem; color: #111827; background: #f9fafb;
+      font-family: inherit; outline: none;
+      transition: border-color 0.15s ease;
     }
+    .access-form input:focus,
+    .access-form textarea:focus { border-color: #10b981; background: #fff; }
+    .access-form textarea { resize: none; height: 72px; }
+    .access-form input::placeholder,
+    .access-form textarea::placeholder { color: #b0b8d0; }
+    .access-submit {
+      align-self: flex-start;
+      padding: 9px 18px; border-radius: 8px; border: none;
+      background: #10b981; color: #fff;
+      font-size: 0.82rem; font-weight: 600; cursor: pointer;
+      font-family: inherit;
+      transition: background 0.15s ease;
+    }
+    .access-submit:hover { background: #059669; }
+    .access-success {
+      font-size: 0.82rem; color: #059669; font-weight: 500;
+      display: flex; align-items: center; gap: 6px; margin-top: 2px;
+    }
+    .slack-btn {
+      align-self: flex-start; display: inline-flex; align-items: center; gap: 7px;
+      padding: 9px 18px; border-radius: 8px; border: none;
+      background: #4A154B; color: #fff;
+      font-size: 0.82rem; font-weight: 600; cursor: pointer;
+      font-family: inherit; transition: background 0.15s ease;
+    }
+    .slack-btn:hover { background: #611f69; }
   </style>
 </head>
 <body>
 
   <h1>People Data Flow</h1>
-  <p class="subtitle">How employee data travels from Rippling to your dashboard — click any step to learn more.</p>
+  <p class="subtitle">How your data travels to your dashboards — click any step to learn more.</p>
 
   <div class="flow" id="flow">
 
-    <!-- RIPPLING -->
-    <div class="node node-rippling" id="node-rippling" onclick="showDetail('rippling')">
-      <div class="node-icon">🏢</div>
-      <div class="node-label">Rippling</div>
-      <div class="node-sublabel">HR &amp; people system of record</div>
-    </div>
-
-    <!-- ARROW 1 -->
-    <div class="arrow-wrapper" style="--from-color:#ff6b4a; --to-color:#a78bfa;">
-      <div class="arrow-line" id="arrow1">
-        <div class="packet" style="--pkt-color:#ff8f75; --speed:2.4s; --delay:0s;"></div>
-        <div class="packet" style="--pkt-color:#ff8f75; --speed:2.4s; --delay:0.8s;"></div>
-        <div class="packet" style="--pkt-color:#ff8f75; --speed:2.4s; --delay:1.6s;"></div>
+    <!-- SOURCES -->
+    <div class="sources-col" id="sources-col">
+      <div class="node node-rippling" id="node-rippling" onclick="showDetail('rippling')">
+        <div class="node-icon">🏢</div>
+        <div class="node-label">Rippling</div>
+        <div class="node-sublabel">HR &amp; people data</div>
       </div>
-      <div class="arrow-label">Pulls data</div>
+      <div class="node node-ashby" id="node-ashby" onclick="showDetail('ashby')">
+        <div class="node-icon">🎯</div>
+        <div class="node-label">Ashby</div>
+        <div class="node-sublabel">Recruiting &amp; hiring data</div>
+      </div>
     </div>
 
-    <!-- ETL / PIPELINE -->
-    <div class="node node-etl" id="node-etl" onclick="showDetail('etl')">
+    <!-- MERGE SVG -->
+    <div class="merge-svg-wrap" id="merge-svg-wrap">
+      <svg id="merge-svg" viewBox="0 0 88 340" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="gradMergeTop" x1="0" y1="0" x2="88" y2="0" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#f97316"/><stop offset="100%" stop-color="#6366f1"/>
+          </linearGradient>
+          <linearGradient id="gradMergeBot" x1="0" y1="0" x2="88" y2="0" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#0d9488"/><stop offset="100%" stop-color="#6366f1"/>
+          </linearGradient>
+          <path id="mergeTopPath" d="M 0,85  C 44,85  44,170 88,170"/>
+          <path id="mergeBotPath" d="M 0,255 C 44,255 44,170 88,170"/>
+        </defs>
+        <use href="#mergeTopPath" stroke="url(#gradMergeTop)" stroke-width="2"/>
+        <use href="#mergeBotPath" stroke="url(#gradMergeBot)" stroke-width="2"/>
+        <polygon id="mergeArrow" points="83,165 93,170 83,175" fill="#6366f1"/>
+        <circle r="5" fill="#fb923c">
+          <animateMotion dur="2.5s" repeatCount="indefinite" begin="0s"><mpath href="#mergeTopPath"/></animateMotion>
+          <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.05;0.9;1" dur="2.5s" repeatCount="indefinite" begin="0s"/>
+        </circle>
+        <circle r="5" fill="#fb923c">
+          <animateMotion dur="2.5s" repeatCount="indefinite" begin="1.2s"><mpath href="#mergeTopPath"/></animateMotion>
+          <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.05;0.9;1" dur="2.5s" repeatCount="indefinite" begin="1.2s"/>
+        </circle>
+        <circle r="5" fill="#14b8a6">
+          <animateMotion dur="2.3s" repeatCount="indefinite" begin="0.5s"><mpath href="#mergeBotPath"/></animateMotion>
+          <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.05;0.9;1" dur="2.3s" repeatCount="indefinite" begin="0.5s"/>
+        </circle>
+        <circle r="5" fill="#14b8a6">
+          <animateMotion dur="2.3s" repeatCount="indefinite" begin="1.7s"><mpath href="#mergeBotPath"/></animateMotion>
+          <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.05;0.9;1" dur="2.3s" repeatCount="indefinite" begin="1.7s"/>
+        </circle>
+      </svg>
+    </div>
+
+    <!-- FIVETRAN -->
+    <div class="node node-fivetran" id="node-fivetran" onclick="showDetail('fivetran')">
       <div class="node-icon">⚙️</div>
       <div class="node-label">Fivetran</div>
-      <div class="node-sublabel">Moves &amp; cleans your data automatically</div>
+      <div class="node-sublabel">Moves &amp; cleans data automatically</div>
     </div>
 
-    <!-- ARROW 2 -->
-    <div class="arrow-wrapper" style="--from-color:#a78bfa; --to-color:#38bdf8;">
-      <div class="arrow-line" id="arrow2">
-        <div class="packet" style="--pkt-color:#c4b5fd; --speed:2.2s; --delay:0.3s;"></div>
-        <div class="packet" style="--pkt-color:#c4b5fd; --speed:2.2s; --delay:1.1s;"></div>
-        <div class="packet" style="--pkt-color:#c4b5fd; --speed:2.2s; --delay:1.9s;"></div>
+    <!-- ARROW: Fivetran → Snowflake -->
+    <div class="arrow-wrapper" style="--from-color:#6366f1; --to-color:#0ea5e9;">
+      <div class="arrow-line">
+        <div class="packet" style="--pkt-color:#818cf8; --speed:2.1s; --delay:0s;"></div>
+        <div class="packet" style="--pkt-color:#818cf8; --speed:2.1s; --delay:0.7s;"></div>
+        <div class="packet" style="--pkt-color:#818cf8; --speed:2.1s; --delay:1.4s;"></div>
       </div>
       <div class="arrow-label">Stores data</div>
     </div>
@@ -282,101 +253,234 @@
       <div class="node-sublabel">Cloud data warehouse</div>
     </div>
 
-    <!-- ARROW 3 -->
-    <div class="arrow-wrapper" style="--from-color:#38bdf8; --to-color:#34d399;">
-      <div class="arrow-line" id="arrow3">
-        <div class="packet" style="--pkt-color:#7dd3fc; --speed:2s; --delay:0.5s;"></div>
-        <div class="packet" style="--pkt-color:#7dd3fc; --speed:2s; --delay:1.3s;"></div>
-        <div class="packet" style="--pkt-color:#7dd3fc; --speed:2s; --delay:2.1s;"></div>
-      </div>
-      <div class="arrow-label">Query</div>
+    <!-- SPLIT SVG -->
+    <div class="split-svg-wrap" id="split-svg-wrap">
+      <svg id="split-svg" viewBox="0 0 88 340" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="gradSplitTop" x1="0" y1="0" x2="88" y2="0" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#0ea5e9"/><stop offset="100%" stop-color="#10b981"/>
+          </linearGradient>
+          <linearGradient id="gradSplitBot" x1="0" y1="0" x2="88" y2="0" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#0ea5e9"/><stop offset="100%" stop-color="#8b5cf6"/>
+          </linearGradient>
+          <path id="splitTopPath" d="M 0,170 C 44,170 44,85  88,85"/>
+          <path id="splitBotPath" d="M 0,170 C 44,170 44,255 88,255"/>
+        </defs>
+        <use href="#splitTopPath" stroke="url(#gradSplitTop)" stroke-width="2"/>
+        <use href="#splitBotPath" stroke="url(#gradSplitBot)" stroke-width="2"/>
+        <polygon id="splitArrowTop" points="83,80 93,85 83,90"   fill="#10b981"/>
+        <polygon id="splitArrowBot" points="83,250 93,255 83,260" fill="#8b5cf6"/>
+        <circle r="5" fill="#34d399">
+          <animateMotion dur="2.2s" repeatCount="indefinite" begin="0.2s"><mpath href="#splitTopPath"/></animateMotion>
+          <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.05;0.9;1" dur="2.2s" repeatCount="indefinite" begin="0.2s"/>
+        </circle>
+        <circle r="5" fill="#34d399">
+          <animateMotion dur="2.2s" repeatCount="indefinite" begin="1.3s"><mpath href="#splitTopPath"/></animateMotion>
+          <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.05;0.9;1" dur="2.2s" repeatCount="indefinite" begin="1.3s"/>
+        </circle>
+        <circle r="5" fill="#a78bfa">
+          <animateMotion dur="2.4s" repeatCount="indefinite" begin="0.7s"><mpath href="#splitBotPath"/></animateMotion>
+          <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.05;0.9;1" dur="2.4s" repeatCount="indefinite" begin="0.7s"/>
+        </circle>
+        <circle r="5" fill="#a78bfa">
+          <animateMotion dur="2.4s" repeatCount="indefinite" begin="1.9s"><mpath href="#splitBotPath"/></animateMotion>
+          <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.05;0.9;1" dur="2.4s" repeatCount="indefinite" begin="1.9s"/>
+        </circle>
+      </svg>
     </div>
 
-    <!-- BI TOOL -->
-    <div class="node node-bi" id="node-bi" onclick="showDetail('bi')">
-      <div class="node-icon">📊</div>
-      <div class="node-label">Dashboard</div>
-      <div class="node-sublabel">Tableau, Looker, Sigma &amp; more</div>
+    <!-- DESTINATIONS -->
+    <div class="dest-col" id="dest-col">
+      <div class="node node-workforce" id="node-workforce" onclick="showDetail('workforce')">
+        <div class="node-icon">👥</div>
+        <div class="node-label">Workforce Dashboard</div>
+        <div class="node-sublabel">Headcount &amp; people insights</div>
+      </div>
+      <div class="node node-empbrand" id="node-empbrand" onclick="showDetail('empbrand')">
+        <div class="node-ribbon">Q2 2026</div>
+        <div class="node-icon">🌟</div>
+        <div class="node-label">Employer Brand Dashboard</div>
+        <div class="node-sublabel">Recruiting &amp; brand metrics</div>
+      </div>
     </div>
 
   </div>
 
   <!-- DETAIL PANEL -->
   <div class="detail-panel" id="detail-panel">
-    <h2 id="detail-title" style="color:#7c8db5;">
-      👆 Click a step above to explore it
-    </h2>
-    <p id="detail-body" style="margin-top:0;"></p>
+    <h2 id="detail-title" style="color:#aab0c8;">👆 Click a step above to explore it</h2>
+    <p id="detail-body"></p>
     <ul id="detail-tags"></ul>
+    <div id="detail-link-wrap"></div>
   </div>
 
   <p class="hint">Data refreshes automatically on your configured schedule (e.g. nightly or hourly).</p>
 
   <script>
+    /* ─── SVG sizing ─── */
+    function fitMergeSvg() {
+      const col = document.getElementById('sources-col');
+      const wrap = document.getElementById('merge-svg-wrap');
+      const svg = document.getElementById('merge-svg');
+      const h = col.offsetHeight; if (!h) return;
+      wrap.style.height = h + 'px';
+      const topC = document.getElementById('node-rippling').offsetHeight / 2;
+      const botC = h - document.getElementById('node-ashby').offsetHeight / 2;
+      const mid = h / 2; const w = 88;
+      svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+      document.getElementById('mergeTopPath').setAttribute('d', `M 0,${topC} C ${w/2},${topC} ${w/2},${mid} ${w},${mid}`);
+      document.getElementById('mergeBotPath').setAttribute('d', `M 0,${botC} C ${w/2},${botC} ${w/2},${mid} ${w},${mid}`);
+      document.getElementById('mergeArrow').setAttribute('points', `${w-5},${mid-5} ${w+5},${mid} ${w-5},${mid+5}`);
+    }
+
+    function fitSplitSvg() {
+      const col = document.getElementById('dest-col');
+      const wrap = document.getElementById('split-svg-wrap');
+      const svg = document.getElementById('split-svg');
+      const h = col.offsetHeight; if (!h) return;
+      wrap.style.height = h + 'px';
+      const topC = document.getElementById('node-workforce').offsetHeight / 2;
+      const botC = h - document.getElementById('node-empbrand').offsetHeight / 2;
+      const mid = h / 2; const w = 88;
+      svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+      document.getElementById('splitTopPath').setAttribute('d', `M 0,${mid} C ${w/2},${mid} ${w/2},${topC} ${w},${topC}`);
+      document.getElementById('splitBotPath').setAttribute('d', `M 0,${mid} C ${w/2},${mid} ${w/2},${botC} ${w},${botC}`);
+      document.getElementById('splitArrowTop').setAttribute('points', `${w-5},${topC-5} ${w+5},${topC} ${w-5},${topC+5}`);
+      document.getElementById('splitArrowBot').setAttribute('points', `${w-5},${botC-5} ${w+5},${botC} ${w-5},${botC+5}`);
+    }
+
+    window.addEventListener('load',   () => { fitMergeSvg(); fitSplitSvg(); });
+    window.addEventListener('resize', () => { fitMergeSvg(); fitSplitSvg(); });
+
+    /* ─── Node data ───
+       Set url: '' to hide the button, or paste a real URL to show it.          */
     const details = {
       rippling: {
-        title: '🏢 Rippling',
-        badge: 'Source System',
-        badgeBg: 'rgba(255,107,74,0.15)',
-        badgeText: '#ff6b4a',
+        title: '🏢 Rippling', badge: 'Source System',
+        badgeBg: 'rgba(249,115,22,0.12)', badgeText: '#f97316',
         body: 'Rippling is your single source of truth for people data. Every time an employee is hired, promoted, or leaves, Rippling captures that change automatically.',
-        tags: ['Employee roster', 'Hire & term dates', 'Departments', 'Job titles', 'Reporting structure', 'Location / office', 'Employment type']
+        tags: ['Employee roster', 'Hire & term dates', 'Departments', 'Job titles', 'Reporting structure', 'Location / office', 'Employment type'],
+        url: '', linkLabel: ''
       },
-      etl: {
-        title: '⚙️ Fivetran',
-        badge: 'Data Connector',
-        badgeBg: 'rgba(167,139,250,0.15)',
-        badgeText: '#a78bfa',
-        body: 'Fivetran is the behind-the-scenes connector that moves your data automatically. It pulls records out of Rippling on a set schedule, cleans them up — fixing formats, removing duplicates, filling gaps — and delivers them to Snowflake in a consistent, ready-to-use shape. No manual exports or spreadsheet wrangling needed.',
-        tags: ['Scheduled syncs', 'Data validation', 'Deduplication', 'Format standardisation', 'Error handling', 'Audit logging']
+      ashby: {
+        title: '🎯 Ashby', badge: 'Source System',
+        badgeBg: 'rgba(13,148,136,0.12)', badgeText: '#0d9488',
+        body: 'Ashby is your recruiting and hiring platform. It tracks every stage of the hiring process — from the moment a role opens to the day an offer is signed — giving you a complete picture of your talent pipeline.',
+        tags: ['Job openings', 'Candidates', 'Interview stages', 'Offers & declines', 'Time-to-hire', 'Source of hire', 'Hiring pipeline'],
+        url: '', linkLabel: ''
+      },
+      fivetran: {
+        title: '⚙️ Fivetran', badge: 'Data Connector',
+        badgeBg: 'rgba(99,102,241,0.12)', badgeText: '#6366f1',
+        body: 'Fivetran is the behind-the-scenes connector that moves your data automatically. It pulls records from both Rippling and Ashby on a set schedule, cleans them up — fixing formats, removing duplicates, filling gaps — and delivers everything to Snowflake in a consistent, ready-to-use shape. No manual exports needed.',
+        tags: ['Scheduled syncs', 'Dual-source ingestion', 'Data validation', 'Deduplication', 'Format standardisation', 'Error handling', 'Audit logging'],
+        url: '', linkLabel: ''
       },
       snowflake: {
-        title: '❄️ Snowflake',
-        badge: 'Data Warehouse',
-        badgeBg: 'rgba(56,189,248,0.15)',
-        badgeText: '#38bdf8',
-        body: "Snowflake is the cloud-based warehouse where all your clean people data lives. It's designed to handle large volumes of data and power fast queries — so even as your organisation grows, reports stay snappy.",
-        tags: ['Historical snapshots', 'Scalable storage', 'Fast SQL queries', 'Role-based access', 'GDPR-compliant', 'Multi-region']
+        title: '❄️ Snowflake', badge: 'Data Warehouse',
+        badgeBg: 'rgba(14,165,233,0.12)', badgeText: '#0ea5e9',
+        body: "Snowflake is the cloud-based warehouse where all your clean people and hiring data lives together. It's built to handle large volumes and power fast queries — so even as your organisation grows, reports stay snappy.",
+        tags: ['Historical snapshots', 'Scalable storage', 'Fast SQL queries', 'Role-based access', 'GDPR-compliant', 'Multi-region'],
+        url: '', linkLabel: ''
       },
-      bi: {
-        title: '📊 Dashboard',
-        badge: 'Destination',
-        badgeBg: 'rgba(52,211,153,0.15)',
-        badgeText: '#34d399',
-        body: "Your dashboard tool connects directly to Snowflake and turns raw numbers into interactive charts and reports — no spreadsheets required. Works with the tools your team already uses, including Tableau, Looker, Looker Studio, and Sigma. Business teams can filter and explore headcount data on their own, without needing technical help.",
-        tags: ['Tableau', 'Looker', 'Looker Studio', 'Sigma', 'Headcount trends', 'Attrition reports', 'Org breakdown', 'Hiring velocity', 'Self-serve filters']
+      workforce: {
+        title: '👥 Workforce Dashboard', badge: 'Live',
+        badgeBg: 'rgba(16,185,129,0.12)', badgeText: '#10b981',
+        body: 'The Workforce Dashboard gives your team a real-time view of your people — who you have, where they sit, and how headcount is changing over time. Powered by Rippling data, it lets business leaders explore org structure, track attrition, and understand workforce trends without pulling a single report manually.',
+        tags: ['Headcount by dept.', 'Attrition trends', 'Org structure', 'Tenure analysis', 'Hiring velocity', 'Location breakdown', 'Self-serve filters'],
+        url: 'https://datastudio.google.com/u/0/reporting/4e718b32-966e-498d-962f-ba425d89d048/page/p_czb07ruz2d/edit',
+        linkLabel: 'Open Workforce Dashboard',
+        linkColor: '#10b981'
+      },
+      empbrand: {
+        title: '🌟 Employer Brand Dashboard', badge: 'Q2 2026 Release',
+        badgeBg: 'rgba(139,92,246,0.12)', badgeText: '#8b5cf6',
+        body: 'The Employer Brand Dashboard surfaces the recruiting and candidate experience metrics that matter most for understanding how your company is perceived as an employer. Powered by Ashby data, it helps talent and marketing teams track hiring funnel performance, source effectiveness, and offer outcomes — all in one place.',
+        tags: ['Hiring funnel', 'Source of hire', 'Candidate experience', 'Offer acceptance rate', 'Time-to-fill', 'Pipeline health', 'Brand reach'],
+        url: '',   /* ← add URL when dashboard is ready */
+        linkLabel: 'Open Employer Brand Dashboard',
+        linkColor: '#8b5cf6'
       }
     };
 
     let activeNode = null;
 
     function showDetail(key) {
-      // toggle off
-      if (activeNode) {
-        document.getElementById('node-' + activeNode).classList.remove('active');
-      }
-      if (activeNode === key) {
-        activeNode = null;
-        resetPanel();
-        return;
-      }
+      if (activeNode) document.getElementById('node-' + activeNode).classList.remove('active');
+      if (activeNode === key) { activeNode = null; resetPanel(); return; }
       activeNode = key;
       document.getElementById('node-' + key).classList.add('active');
-
       const d = details[key];
       const panel = document.getElementById('detail-panel');
-      const titleEl = document.getElementById('detail-title');
-      const bodyEl  = document.getElementById('detail-body');
-      const tagsEl  = document.getElementById('detail-tags');
-
       panel.style.opacity = '0';
       setTimeout(() => {
-        titleEl.innerHTML = `${d.title} <span class="badge" style="--badge-bg:${d.badgeBg}; --badge-text:${d.badgeText}; background:${d.badgeBg}; color:${d.badgeText};">${d.badge}</span>`;
-        titleEl.style.color = '#ffffff';
-        bodyEl.textContent = d.body;
-        tagsEl.innerHTML = d.tags.map(t => `<li>${t}</li>`).join('');
+        document.getElementById('detail-title').innerHTML =
+          `${d.title} <span class="badge" style="background:${d.badgeBg};color:${d.badgeText};">${d.badge}</span>`;
+        document.getElementById('detail-title').style.color = '#111827';
+        document.getElementById('detail-body').textContent = d.body;
+        document.getElementById('detail-tags').innerHTML = d.tags.map(t => `<li>${t}</li>`).join('');
+
+        // Link button — only render if url is set
+        const linkWrap = document.getElementById('detail-link-wrap');
+        const isRealUrl = d.url && !d.url.includes('_URL');
+        let linkHtml = isRealUrl ? `
+          <a class="open-link" href="${d.url}" target="_blank" rel="noopener"
+             style="--link-color:${d.linkColor};">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+              <polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
+            </svg>
+            ${d.linkLabel}
+          </a>` : '';
+
+        // Access request form — workforce only
+        const accessHtml = (key === 'workforce') ? `
+          <div class="access-divider"><span>Don't have access yet?</span></div>
+          <div class="access-form" id="access-form">
+            <div class="form-row">
+              <input id="req-name"   type="text" placeholder="Your name" />
+              <input id="req-reason" type="text" placeholder="Why do you need access? (optional)" />
+            </div>
+            <button class="slack-btn" onclick="submitAccessRequest()">
+              <svg width="14" height="14" viewBox="0 0 54 54" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M19.7 33.5c0 2.7-2.2 4.9-4.9 4.9s-4.9-2.2-4.9-4.9 2.2-4.9 4.9-4.9H19.7v4.9z" fill="#E01E5A"/>
+                <path d="M22.2 33.5c0-2.7 2.2-4.9 4.9-4.9s4.9 2.2 4.9 4.9v12.3c0 2.7-2.2 4.9-4.9 4.9s-4.9-2.2-4.9-4.9V33.5z" fill="#E01E5A"/>
+                <path d="M27.1 19.7c-2.7 0-4.9-2.2-4.9-4.9s2.2-4.9 4.9-4.9 4.9 2.2 4.9 4.9V19.7H27.1z" fill="#36C5F0"/>
+                <path d="M27.1 22.2c2.7 0 4.9 2.2 4.9 4.9s-2.2 4.9-4.9 4.9H14.8c-2.7 0-4.9-2.2-4.9-4.9s2.2-4.9 4.9-4.9H27.1z" fill="#36C5F0"/>
+                <path d="M40.9 27.1c0 2.7-2.2 4.9-4.9 4.9s-4.9-2.2-4.9-4.9V19.7c0-2.7 2.2-4.9 4.9-4.9s4.9 2.2 4.9 4.9v7.4z" fill="#2EB67D"/>
+                <path d="M38.4 27.1c2.7 0 4.9 2.2 4.9 4.9s-2.2 4.9-4.9 4.9-4.9-2.2-4.9-4.9V27.1h4.9z" fill="#ECB22E"/>
+                <path d="M33.5 38.4c0-2.7 2.2-4.9 4.9-4.9s4.9 2.2 4.9 4.9-2.2 4.9-4.9 4.9H33.5v-4.9z" fill="#ECB22E"/>
+                <path d="M33.5 14.8c0 2.7-2.2 4.9-4.9 4.9s-4.9-2.2-4.9-4.9V2.5C23.7-.2 25.9 0 27.1 0c2.7 0 4.9 2.2 4.9 4.9v9.9z" fill="#2EB67D"/>
+              </svg>
+              Request access in Slack
+            </button>
+          </div>` : '';
+
+        linkWrap.innerHTML = linkHtml + accessHtml;
         panel.style.opacity = '1';
       }, 150);
+    }
+
+    function submitAccessRequest() {
+      const name   = document.getElementById('req-name').value.trim();
+      const reason = document.getElementById('req-reason').value.trim();
+      if (!name) {
+        document.getElementById('req-name').style.borderColor = '#f87171';
+        return;
+      }
+      // Build the message and copy to clipboard
+      const msg = `:wave: *Workforce Dashboard access request*\n*Name:* ${name}${reason ? '\n*Reason:* ' + reason : ''}`;
+      navigator.clipboard.writeText(msg).catch(() => {});
+      // Open #workforce_analytics in Slack
+      window.open('https://slack.com/app_redirect?channel=C0AD3C6UREX', '_blank');
+      // Confirmation
+      document.getElementById('access-form').innerHTML =
+        `<div class="access-success">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+          Opening <strong>#workforce_analytics</strong> — your message is copied, just paste and send!
+        </div>`;
     }
 
     function resetPanel() {
@@ -384,9 +488,10 @@
       panel.style.opacity = '0';
       setTimeout(() => {
         document.getElementById('detail-title').innerHTML = '👆 Click a step above to explore it';
-        document.getElementById('detail-title').style.color = '#7c8db5';
+        document.getElementById('detail-title').style.color = '#aab0c8';
         document.getElementById('detail-body').textContent = '';
         document.getElementById('detail-tags').innerHTML = '';
+        document.getElementById('detail-link-wrap').innerHTML = '';
         panel.style.opacity = '1';
       }, 150);
     }
